@@ -1,0 +1,22 @@
+[build]
+  functions = "netlify/functions"
+  publish = "public"
+  # Use a short debug build script so Netlify build logs show what the build container
+  # actually sees. This is temporary — once things are working you can revert this
+  # to a shorter command (for example: "python3 scripts/sync_static.py").
+  command = "bash netlify_build_debug.sh"
+
+[[redirects]]
+  from = "/static/*"
+  to = "/static/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/app"
+  status = 200
+  force = true
+
+# Notes:
+# - Netlify will route all requests to the `app` function which wraps the Flask WSGI app.
+# - Static assets should be placed in `public/` (we copy `static/` to `public/static/` below).

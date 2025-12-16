@@ -1,0 +1,635 @@
+"""
+COLLIDE AI Platform - Flask Backend
+Web platform for brand consulting with admin controls
+"""
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask_cors import CORS
+import logging
+import openai
+import os
+import json
+from datetime import datetime
+from functools import wraps
+import secrets
+
+app = Flask(__name__)
+app.secret_key = os.getenv('SECRET_KEY', secrets.token_hex(32))
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s')
+logger = logging.getLogger(__name__)
+
+# CORS configuration (allow specific origins if provided)
+allowed_origins = os.getenv('CORS_ORIGINS')  # comma-separated origins, e.g., https://yourdomain.com,https://admin.yourdomain.com
+if allowed_origins:
+     origins = [o.strip() for o in allowed_origins.split(',') if o.strip()]
+     CORS(app, resources={r"/*": {"origins": origins}})
+else:
+     CORS(app)
+
+# Admin credentials (in production, use database with hashed passwords)
+ADMIN_CREDENTIALS = {
+     'admin': 'collide2025'  # Change this in production!
+}
+
+# Store conversations (in production, use a database)
+conversations = []
+settings = {
+     'openai_api_key': os.getenv('OPENAI_API_KEY', ''),
+     'model': 'gpt-4',
+     'temperature': 0.7,
+     'max_tokens': 800,
+     'use_api': False  # Toggle between API and rule-based
+}
+
+# System prompt
+SYSTEM_PROMPT = """You are COLLIDE AI, an expert brand strategist and business development advisor specializing in creative industries: fashion, beauty, lifestyle, and design.
+
+YOUR IDENTITY:
+- You represent COLLIDE, a brand-shaping and business development consultancy
+- You advise, guide, and coach ambitious creative entrepreneurs
+- Your expertise spans strategic positioning, visual identity, and sustainable venture metrics
+
+YOUR APPROACH - THE COLLIDE FORMULA:
+1. BRAND-SHAPING: Translate authentic visions into cohesive brand identities
+2. STRATEGIC POSITIONING: Align brand purpose with market opportunity
+3. VISUAL IDENTITY: Create compelling aesthetic systems that resonate
+4. BUSINESS METRICS: Ensure sustainable growth and venture success
+5. EVOLUTION: Guide continuous brand and business development
+
+YOUR CONSULTING STYLE:
+- Ask insightful questions to understand the client's authentic vision
+- Provide strategic, actionable advice grounded in both artistry and business
+- Balance creative integrity with commercial viability
+- Offer concrete frameworks, not just abstract concepts
+- Be encouraging yet honest about challenges and opportunities
+
+AREAS OF EXPERTISE:
+- Brand strategy & positioning
+- Visual identity systems
+- Target audience definition
+- Competitive differentiation
+- Go-to-market strategies
+- Pricing & business models
+- Sustainable growth planning
+- Creative direction
+- Portfolio/collection development
+- Digital presence & storytelling
+
+Always maintain a professional, insightful, and inspiring tone. You solidify brand and business longevity through strategic foresight."""
+
+
+def admin_required(f):
+     """Decorator to require admin authentication"""
+     @wraps(f)
+     def decorated_function(*args, **kwargs):
+          if not session.get('admin_logged_in'):
+                return redirect(url_for('admin_login'))
+          return f(*args, **kwargs)
+     return decorated_function
+
+
+def get_rule_based_response(message):
+     """Provide rule-based consultation responses"""
+     message_lower = message.lower()
+    
+     # Brand strategy queries
+     if any(word in message_lower for word in ['brand', 'identity', 'positioning']):
+          return """**BRAND-SHAPING FRAMEWORK**
+
+Strong brands are built on three pillars:
+
+1. **AUTHENTIC CORE**
+    - Brand purpose: Why do you exist beyond profit?
+    - Brand values: What principles guide your decisions?
+    - Brand personality: How do you want to be perceived?
+
+2. **STRATEGIC POSITIONING**
+    - Target audience: Who specifically needs what you offer?
+    - Unique value: What makes you distinctively valuable?
+    - Market position: Where do you fit in the landscape?
+
+3. **VISUAL & VERBAL IDENTITY**
+    - Visual system: Colors, typography, imagery style
+    - Brand voice: How you communicate (tone, language)
+    - Touchpoints: Consistent experience across all platforms
+
+What aspect would you like to develop first?"""
+    
+     # Business development queries
+     elif any(word in message_lower for word in ['business', 'launch', 'growth', 'revenue', 'pricing']):
+          return """**SUSTAINABLE BUSINESS DEVELOPMENT**
+
+Let's align your creative vision with viable business metrics:
+
+1. **BUSINESS MODEL**
+    - Revenue streams: How will you monetize?
+    - Pricing strategy: Value-based vs. cost-plus
+    - Distribution: Direct, retail, hybrid?
+
+2. **GO-TO-MARKET STRATEGY**
+    - Launch approach: Soft launch vs. big reveal
+    - Marketing channels: Where is your audience?
+    - Partnership opportunities: Strategic collaborations
+
+3. **GROWTH METRICS**
+    - Short-term goals (3-6 months)
+    - Medium-term milestones (1-2 years)
+    - Long-term vision (3-5 years)
+
+What's your current revenue model, or what are you considering?"""
+    
+     # Target audience queries
+     elif any(word in message_lower for word in ['audience', 'customer', 'market', 'demographic']):
+          return """**TARGET AUDIENCE DEFINITION**
+
+Understanding your ideal client/customer is crucial:
+
+**THE COLLIDE AUDIENCE FRAMEWORK:**
+
+1. **DEMOGRAPHIC PROFILE**
+    - Age range, location, income level
+    - Lifestyle characteristics
+    - Shopping behaviors
+
+2. **PSYCHOGRAPHIC DEPTH**
+    - Values and beliefs
+    - Aspirations and pain points
+    - Media consumption habits
+
+3. **BRAND RELATIONSHIP**
+    - Why they need you (functional benefits)
+    - Why they'll love you (emotional benefits)
+    - Why they'll advocate for you (social benefits)
+
+Who do you envision as your ideal customer? Paint me a picture of them."""
+    
+     # Visual identity queries
+     elif any(word in message_lower for word in ['visual', 'design', 'aesthetic', 'look', 'style']):
+          return """**VISUAL IDENTITY DEVELOPMENT**
+
+Your visual identity should amplify your brand's authentic essence:
+
+**VISUAL SYSTEM COMPONENTS:**
+
+1. **FOUNDATIONAL ELEMENTS**
+    - Logo/wordmark
+    - Color palette (primary, secondary, accent)
+    - Typography hierarchy
+    - Imagery style & photography direction
+
+2. **MOOD & INSPIRATION**
+    - Visual references that resonate
+    - Emotional tone (minimal, bold, romantic, edgy?)
+    - Cultural influences
+
+3. **APPLICATION**
+    - Packaging/product presentation
+    - Digital presence (website, social)
+    - Marketing materials
+    - Physical spaces (if applicable)
+
+What aesthetic direction feels authentic to your brand vision?"""
+    
+     # Competition queries
+     elif any(word in message_lower for word in ['competition', 'competitor', 'differentiat']):
+          return """**COMPETITIVE DIFFERENTIATION**
+
+Standing out in creative industries requires strategic positioning:
+
+**DIFFERENTIATION STRATEGY:**
+
+1. **COMPETITIVE LANDSCAPE**
+    - Direct competitors: Who offers similar products/services?
+    - Indirect competitors: Who solves the same problem differently?
+    - White space: What's missing in the market?
+
+2. **YOUR UNIQUE ADVANTAGE**
+    - Product/service differentiation
+    - Brand story & founder narrative
+    - Customer experience excellence
+    - Values-based positioning
+
+3. **OWNING YOUR POSITION**
+    - Be specific, not everything to everyone
+    - Lead with your strength
+    - Create category of one if possible
+
+What do you offer that no one else does quite like you?"""
+    
+     else:
+          return """Thank you for sharing. To provide the most strategic guidance, I'd love to understand more:
+
+**BRAND FOUNDATION:**
+- What's your brand's core purpose?
+- Who is your ideal customer?
+- What makes you uniquely valuable?
+
+**CURRENT CHALLENGE:**
+- What specific aspect needs attention right now?
+- What's blocking your progress?
+- What does success look like?
+
+**RESOURCES:**
+- What stage is your business in?
+- What's your timeline?
+- What constraints should I consider?
+
+Share more details, and I'll provide targeted strategic advice."""
+
+def get_ai_response(message, conversation_history):
+    """Get response from OpenAI API"""
+    try:
+        if not settings['openai_api_key']:
+            return "OpenAI API key not configured. Please contact support."
+        
+        openai.api_key = settings['openai_api_key']
+        
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        messages.extend(conversation_history)
+        messages.append({"role": "user", "content": message})
+        
+        response = openai.ChatCompletion.create(
+            model=settings['model'],
+            messages=messages,
+            temperature=settings['temperature'],
+            max_tokens=settings['max_tokens']
+        )
+        
+        return response.choices[0].message.content
+    except Exception as e:
+        logger.exception("OpenAI API error")
+        return f"I apologize for the technical difficulty. Let me provide guidance based on COLLIDE's framework instead.\n\n{get_rule_based_response(message)}"
+
+
+# Public Routes
+@app.route('/')
+def index():
+    """Main chat interface"""
+    return render_template('index.html')
+
+
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    """Handle chat messages"""
+    try:
+        data = request.get_json(silent=True) or {}
+        message = data.get('message', '').strip()
+        session_id = data.get('session_id', '')
+        conversation_history = data.get('history', [])
+        persona = data.get('persona', 'strategist')
+        
+        if not message:
+            return jsonify({'error': 'Message is required'}), 400
+        
+        logger.info(f"/api/chat session={session_id} message={message[:120]}...")
+
+        # Adjust system prompt by persona
+        persona_suffix = {
+            'strategist': "Respond as a strategic brand consultant.",
+            'creative': "Respond as a creative director with strong visual and storytelling instincts.",
+            'ops': "Respond as an operations and growth advisor focused on metrics and GTM.",
+            'mentor': "Respond as a founder coach: candid, supportive, and practical."
+        }.get(persona, 'Respond as a strategic brand consultant.')
+
+        # Generate response
+        if settings['use_api'] and settings['openai_api_key']:
+            # Inject persona directive
+            augmented_history = [{
+                'role': 'system', 'content': persona_suffix
+            }] + conversation_history
+            response = get_ai_response(message, augmented_history)
+        else:
+            response = get_rule_based_response(message)
+        
+        # Store conversation
+        conversations.append({
+            'session_id': session_id,
+            'timestamp': datetime.now().isoformat(),
+            'user_message': message,
+            'bot_response': response
+        })
+        
+        return jsonify({
+            'response': response,
+            'timestamp': datetime.now().isoformat()
+        })
+    
+    except Exception as e:
+        logger.exception("/api/chat error")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/health')
+def health():
+    """Simple health check endpoint"""
+    return jsonify({
+        'status': 'ok',
+        'mode': 'api' if settings['use_api'] and settings['openai_api_key'] else 'rule-based',
+        'model': settings['model']
+    })
+
+
+# Admin Routes
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    """Admin login page"""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        if username in ADMIN_CREDENTIALS and ADMIN_CREDENTIALS[username] == password:
+            session['admin_logged_in'] = True
+            session['admin_username'] = username
+            return redirect(url_for('admin_dashboard'))
+        else:
+            return render_template('admin_login.html', error='Invalid credentials')
+    
+    return render_template('admin_login.html')
+
+
+@app.route('/admin/logout')
+def admin_logout():
+    """Admin logout"""
+    session.pop('admin_logged_in', None)
+    session.pop('admin_username', None)
+    return redirect(url_for('index'))
+
+
+@app.route('/admin/dashboard')
+@admin_required
+def admin_dashboard():
+    """Admin dashboard"""
+    return render_template('admin_dashboard.html', 
+                         conversations=conversations[-50:],  # Last 50 conversations
+                         settings=settings)
+
+
+@app.route('/admin/api/settings', methods=['GET', 'POST'])
+@admin_required
+def admin_settings():
+    """Get or update settings"""
+    if request.method == 'POST':
+        data = request.json
+        
+        if 'openai_api_key' in data:
+            settings['openai_api_key'] = data['openai_api_key']
+        if 'model' in data:
+            settings['model'] = data['model']
+        if 'temperature' in data:
+            settings['temperature'] = float(data['temperature'])
+        if 'max_tokens' in data:
+            settings['max_tokens'] = int(data['max_tokens'])
+        if 'use_api' in data:
+            settings['use_api'] = bool(data['use_api'])
+        
+        return jsonify({'success': True, 'settings': settings})
+    
+    return jsonify(settings)
+
+
+@app.route('/admin/api/conversations')
+@admin_required
+def admin_conversations():
+    """Get all conversations"""
+    return jsonify(conversations)
+
+
+@app.route('/admin/api/conversations/export')
+@admin_required
+def export_conversations():
+    """Export conversations as JSON"""
+    return jsonify({
+        'conversations': conversations,
+        'exported_at': datetime.now().isoformat()
+    })
+
+
+@app.route('/admin/api/conversations/clear', methods=['POST'])
+@admin_required
+def clear_conversations():
+    """Clear conversation history"""
+    conversations.clear()
+    return jsonify({'success': True})
+
+
+
+
+# ============================================================================
+# LEAD GENERATION ROUTES
+# ============================================================================
+
+from lead_gen import LeadGenerator
+import sqlite3
+import uuid
+import time
+import os as _os
+
+_REDIS_URL = _os.getenv('REDIS_URL')
+if _REDIS_URL:
+    try:
+        import redis as _redis
+        from rq import Queue as _RQQueue
+        from rq.job import Job as _RQJob
+    except Exception:
+        _redis = None
+        _RQQueue = None
+        _RQJob = None
+
+# Jobs DB (simple SQLite queue for background processing)
+DB_PATH = os.path.join(os.path.dirname(__file__), 'jobs.db')
+
+
+def init_jobs_db():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('''
+    CREATE TABLE IF NOT EXISTS jobs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        job_id TEXT UNIQUE,
+        status TEXT,
+        created_at TEXT,
+        updated_at TEXT,
+        payload TEXT,
+        result TEXT
+    )
+    ''')
+    conn.commit()
+    conn.close()
+
+
+def enqueue_job(payload_dict):
+    # If Redis is configured and rq is available, enqueue into RQ
+    if _REDIS_URL and _redis and _RQQueue:
+        redis_conn = _redis.from_url(_REDIS_URL)
+        q = _RQQueue(connection=redis_conn)
+        # Lazy import tasks to avoid circular imports
+        from tasks import process_lead_campaign
+        rq_job = q.enqueue(process_lead_campaign, payload_dict)
+        return rq_job.get_id()
+
+    # Fallback to SQLite queue
+    job_id = str(uuid.uuid4())
+    created = datetime.now().isoformat()
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('INSERT INTO jobs (job_id, status, created_at, updated_at, payload) VALUES (?,?,?,?,?)',
+              (job_id, 'pending', created, created, json.dumps(payload_dict)))
+    conn.commit()
+    conn.close()
+    return job_id
+
+
+def get_job(job_id):
+    # If Redis + RQ used, fetch job info from RQ
+    if _REDIS_URL and _redis and _RQJob:
+        try:
+            redis_conn = _redis.from_url(_REDIS_URL)
+            rq_job = _RQJob.fetch(job_id, connection=redis_conn)
+            return {
+                'job_id': rq_job.get_id(),
+                'status': rq_job.get_status(),
+                'created_at': None,
+                'updated_at': None,
+                'payload': None,
+                'result': rq_job.result
+            }
+        except Exception:
+            # fall back to sqlite lookup
+            pass
+
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT job_id, status, created_at, updated_at, payload, result FROM jobs WHERE job_id = ?', (job_id,))
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        return None
+    return {
+        'job_id': row[0],
+        'status': row[1],
+        'created_at': row[2],
+        'updated_at': row[3],
+        'payload': json.loads(row[4]) if row[4] else None,
+        'result': json.loads(row[5]) if row[5] else None
+    }
+
+
+# Initialize the jobs DB at import time
+init_jobs_db()
+
+@app.route('/lead-gen')
+def lead_gen_page():
+    """Lead generation dashboard page"""
+    return render_template('lead_gen.html')
+
+@app.route('/api/lead-gen/campaign', methods=['POST'])
+def run_lead_campaign():
+    """Run a lead generation campaign"""
+    try:
+        data = request.get_json() or {}
+        
+        instagram_hashtags = data.get('instagram_hashtags', [])
+        linkedin_keywords = data.get('linkedin_keywords', [])
+        max_leads = int(data.get('max_leads', 50))
+        auto_outreach = data.get('auto_outreach', False)
+        
+        generator = LeadGenerator()
+        
+        logger.info(f"Starting lead campaign: {len(instagram_hashtags)} hashtags, {len(linkedin_keywords)} keywords")
+        
+        results = generator.run_lead_generation_campaign(
+            instagram_hashtags=instagram_hashtags,
+            linkedin_keywords=linkedin_keywords,
+            max_leads=max_leads,
+            auto_outreach=auto_outreach
+        )
+        
+        qualified_leads = [lead for lead in results.get('leads', []) if lead.get('qualified', False)]
+        
+        return jsonify({
+            'success': True,
+            'campaign_id': results.get('campaign_id', 'unknown'),
+            'total_found': results.get('total_found', 0),
+            'qualified': len(qualified_leads),
+            'outreach_sent': results.get('outreach_sent', 0),
+            'top_leads': qualified_leads[:10],
+            'all_leads': qualified_leads,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in lead campaign: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/lead-gen/queue', methods=['POST'])
+def queue_lead_campaign():
+    """Enqueue a lead generation campaign to be processed by a background worker."""
+    try:
+        data = request.get_json() or {}
+        # Basic validation
+        if not isinstance(data, dict):
+            return jsonify({'success': False, 'error': 'Invalid payload'}), 400
+
+        job_id = enqueue_job(data)
+        return jsonify({'success': True, 'job_id': job_id}), 202
+    except Exception as e:
+        logger.exception("Error enqueueing lead campaign")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/lead-gen/job/<job_id>')
+def get_job_status(job_id):
+    job = get_job(job_id)
+    if not job:
+        return jsonify({'error': 'Job not found'}), 404
+    return jsonify(job)
+
+@app.route('/api/lead-gen/outreach', methods=['POST'])
+def send_outreach():
+    """Send outreach to a specific lead"""
+    try:
+        data = request.get_json() or {}
+        lead = data.get('lead', {})
+        
+        if not lead or not lead.get('email'):
+            return jsonify({'success': False, 'error': 'Lead email is required'}), 400
+        
+        generator = LeadGenerator()
+        
+        message = generator.generate_personalized_message(lead)
+        success = generator.send_email(
+            to_email=lead['email'],
+            subject=f"Elevate {lead.get('company', 'your brand')}'s strategy",
+            body=message,
+            lead_info=lead
+        )
+        
+        if success:
+            return jsonify({'success': True, 'message': 'Outreach sent successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to send email'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error sending outreach: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+
+if __name__ == '__main__':
+    # Create templates directory if it doesn't exist
+    os.makedirs('templates', exist_ok=True)
+    os.makedirs('static', exist_ok=True)
+
+    port = int(os.getenv('PORT', '5001'))
+    public_url = os.getenv('PUBLIC_URL', f'http://localhost:{port}')
+
+    print("🎨 COLLIDE AI Platform Starting...")
+    print("=" * 60)
+    print(f"Customer Interface: {public_url}")
+    print(f"Admin Dashboard: {public_url}/admin/login")
+    print("Admin Credentials: admin / collide2025")
+    print("=" * 60)
+
+    app.run(debug=True, host='0.0.0.0', port=port)

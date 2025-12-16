@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COLLIDE AI - Brand Strategy Advisor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <h1>🎨 COLLIDE AI</h1>
+                <p class="tagline">Brand-Shaping and Business Development for Creative Entrepreneurs</p>
+            </div>
+            <div class="header-info">
+                <span class="industry-tags">Fashion • Beauty • Lifestyle • Design</span>
+            </div>
+        </header>
+
+        <!-- Main Layout -->
+        <div class="main-grid">
+            <!-- Sidebar: Services / Resources -->
+            <aside class="sidebar">
+                <div class="card">
+                    <h3>Service Suite</h3>
+                    <ul class="bullet-list">
+                        <li>Brand Strategy Consultation</li>
+                        <li>Visual Identity Development</li>
+                        <li>Business Development</li>
+                        <li>The COLLIDE Formula Mastermind</li>
+                        <li>Brand Audit & Analysis</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>Resources</h3>
+                    <ul class="bullet-list">
+                        <li>Positioning Canvas</li>
+                        <li>Audience Definition Guide</li>
+                        <li>Visual System Checklist</li>
+                        <li>Go-To-Market Planner</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>Quick Links</h3>
+                    <ul class="link-list">
+                        <li><a href="https://collideartistry.com" target="_blank">About COLLIDE</a></li>
+                        <li><a href="#" id="open-admin">Admin Login</a></li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Chat Panel -->
+            <section class="chat-panel">
+                <!-- Hero Banner with Persona Selector -->
+                <div class="hero">
+                    <div class="hero-text">
+                        <h2>Shape your brand with strategy and artistry</h2>
+                        <p>Ask questions, explore frameworks, and evolve your brand with a dedicated AI advisor.</p>
+                    </div>
+                    <div class="persona-selector">
+                        <label>Advisor Persona</label>
+                        <select id="persona-select">
+                            <option value="strategist" selected>Strategist (default)</option>
+                            <option value="creative">Creative Director</option>
+                            <option value="ops">Ops & Growth</option>
+                            <option value="mentor">Founder Coach</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Starter Prompts -->
+                <div class="starters">
+                    <button class="starter" data-prompt="Help me position my sustainable beauty brand for a premium audience.">Position my brand</button>
+                    <button class="starter" data-prompt="Design a cohesive visual identity system for a minimalist lifestyle label.">Visual identity system</button>
+                    <button class="starter" data-prompt="What pricing model fits a limited-edition fashion capsule collection?">Pricing model</button>
+                    <button class="starter" data-prompt="Define my ideal customer for a luxury skincare line.">Define my audience</button>
+                </div>
+
+                <!-- Messages -->
+                <div id="chat-messages" class="chat-messages">
+                    <div class="message bot-message">
+                        <div class="message-avatar">AI</div>
+                        <div class="message-content">
+                            <div class="message-text">
+                                <h3>Welcome to COLLIDE! 👋</h3>
+                                <p>I'm your strategic brand advisor, here to help you shape and evolve your creative venture in fashion, beauty, lifestyle, or design.</p>
+                                <p><strong>Let's start by understanding your vision:</strong></p>
+                                <ul>
+                                    <li>What creative venture are you building or growing?</li>
+                                    <li>What's your authentic vision?</li>
+                                    <li>Where are you currently in your journey?</li>
+                                </ul>
+                                <p>Share what feels most pressing, and we'll dive in from there.</p>
+                            </div>
+                            <div class="message-time"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="chat-input-container">
+                    <form id="chat-form" class="chat-form">
+                        <textarea 
+                            id="message-input" 
+                            class="message-input" 
+                            placeholder="Share your brand challenge or question..."
+                            rows="1"
+                        ></textarea>
+                        <button type="submit" id="send-button" class="send-button" title="Send">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </form>
+                    <div class="input-row">
+                        <div class="input-hint">💡 Ask about brand strategy, visual identity, audience, pricing, GTM…</div>
+                        <div class="input-tools">
+                            <button class="tool-btn" id="clear-chat" title="Clear Chat">🧹</button>
+                            <a class="tool-btn" href="/admin/login" title="Admin Login">🔐</a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>COLLIDE translates authentic visions into brand and business evolution</p>
+            <a href="https://collideartistry.com" target="_blank">collideartistry.com</a>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

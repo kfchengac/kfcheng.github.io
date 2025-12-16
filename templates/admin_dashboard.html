@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - COLLIDE AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+</head>
+<body class="admin-body">
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <div class="admin-logo">
+                <h2>🎨 COLLIDE AI</h2>
+                <p>Admin Dashboard</p>
+            </div>
+            <nav class="admin-nav">
+                <a href="#settings" class="nav-item active" onclick="showSection('settings')">
+                    ⚙️ Settings
+                </a>
+                <a href="#conversations" class="nav-item" onclick="showSection('conversations')">
+                    💬 Conversations
+                </a>
+                <a href="#analytics" class="nav-item" onclick="showSection('analytics')">
+                    📊 Analytics
+                </a>
+                <a href="{{ url_for('index') }}" class="nav-item">
+                    🏠 View Site
+                </a>
+                <a href="{{ url_for('admin_logout') }}" class="nav-item logout">
+                    🚪 Logout
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-main">
+            <header class="admin-header">
+                <h1>Dashboard</h1>
+                <div class="admin-user">
+                    Welcome, {{ session.admin_username }}
+                </div>
+            </header>
+
+            <!-- Settings Section -->
+            <section id="settings-section" class="admin-section active">
+                <h2>AI Model Settings</h2>
+                
+                <div class="settings-grid">
+                    <!-- API Configuration -->
+                    <div class="settings-card">
+                        <h3>🔑 OpenAI Configuration</h3>
+                        <form id="api-settings-form">
+                            <div class="form-group">
+                                <label>API Mode</label>
+                                <select id="use-api" name="use_api">
+                                    <option value="false" {% if not settings.use_api %}selected{% endif %}>Rule-Based (No API)</option>
+                                    <option value="true" {% if settings.use_api %}selected{% endif %}>OpenAI API</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>OpenAI API Key</label>
+                                <input type="password" id="api-key" name="openai_api_key" 
+                                       value="{{ settings.openai_api_key }}" 
+                                       placeholder="sk-...">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Model</label>
+                                <select id="model" name="model">
+                                    <option value="gpt-4" {% if settings.model == 'gpt-4' %}selected{% endif %}>GPT-4</option>
+                                    <option value="gpt-3.5-turbo" {% if settings.model == 'gpt-3.5-turbo' %}selected{% endif %}>GPT-3.5 Turbo</option>
+                                </select>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">Save API Settings</button>
+                        </form>
+                    </div>
+
+                    <!-- Model Parameters -->
+                    <div class="settings-card">
+                        <h3>🎛️ Model Parameters</h3>
+                        <form id="model-settings-form">
+                            <div class="form-group">
+                                <label>Temperature ({{ settings.temperature }})</label>
+                                <input type="range" id="temperature" name="temperature" 
+                                       min="0" max="1" step="0.1" 
+                                       value="{{ settings.temperature }}"
+                                       oninput="document.querySelector('label[for=temperature]').textContent = 'Temperature (' + this.value + ')'">
+                                <small>Lower = more focused, Higher = more creative</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Max Tokens</label>
+                                <input type="number" id="max-tokens" name="max_tokens" 
+                                       value="{{ settings.max_tokens }}" 
+                                       min="100" max="2000" step="100">
+                                <small>Maximum response length</small>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">Update Parameters</button>
+                        </form>
+                    </div>
+
+                    <!-- System Status -->
+                    <div class="settings-card">
+                        <h3>📊 System Status</h3>
+                        <div class="status-info">
+                            <div class="status-item">
+                                <span class="status-label">Mode:</span>
+                                <span class="status-value">
+                                    {% if settings.use_api %}
+                                    <span class="badge badge-success">AI Powered</span>
+                                    {% else %}
+                                    <span class="badge badge-info">Rule-Based</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">Total Conversations:</span>
+                                <span class="status-value">{{ conversations|length }}</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">Model:</span>
+                                <span class="status-value">{{ settings.model }}</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">API Key:</span>
+                                <span class="status-value">
+                                    {% if settings.openai_api_key %}
+                                    <span class="badge badge-success">Configured</span>
+                                    {% else %}
+                                    <span class="badge badge-warning">Not Set</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Conversations Section -->
+            <section id="conversations-section" class="admin-section">
+                <div class="section-header">
+                    <h2>Recent Conversations</h2>
+                    <div class="section-actions">
+                        <button onclick="exportConversations()" class="btn btn-secondary">📥 Export</button>
+                        <button onclick="clearConversations()" class="btn btn-danger">🗑️ Clear All</button>
+                    </div>
+                </div>
+                
+                <div class="conversations-list" id="conversations-list">
+                    {% if conversations %}
+                        {% for conv in conversations|reverse %}
+                        <div class="conversation-item">
+                            <div class="conv-header">
+                                <span class="conv-time">{{ conv.timestamp }}</span>
+                                <span class="conv-session">Session: {{ conv.session_id[:8] }}</span>
+                            </div>
+                            <div class="conv-message user-msg">
+                                <strong>User:</strong> {{ conv.user_message }}
+                            </div>
+                            <div class="conv-message bot-msg">
+                                <strong>COLLIDE AI:</strong> {{ conv.bot_response[:200] }}{% if conv.bot_response|length > 200 %}...{% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">
+                            <p>No conversations yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            <!-- Analytics Section -->
+            <section id="analytics-section" class="admin-section">
+                <h2>Analytics</h2>
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <h3>📈 Total Conversations</h3>
+                        <div class="analytics-value">{{ conversations|length }}</div>
+                    </div>
+                    <div class="analytics-card">
+                        <h3>🎯 Active Sessions</h3>
+                        <div class="analytics-value">{{ conversations|map(attribute='session_id')|unique|list|length }}</div>
+                    </div>
+                    <div class="analytics-card">
+                        <h3>⚡ Response Mode</h3>
+                        <div class="analytics-value">
+                            {% if settings.use_api %}AI{% else %}Rule-Based{% endif %}
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='admin.js') }}"></script>
+</body>
+</html>

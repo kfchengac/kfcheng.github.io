@@ -1,0 +1,38 @@
+{
+  "campaign_date": "2025-10-17T12:25:45.753355",
+  "total_qualified_leads": 1,
+  "leads": [
+    {
+      "platform": "instagram",
+      "username": "@sustainablebeautyco",
+      "name": "Sarah Chen",
+      "followers": 15000,
+      "bio": "Founder of sustainable beauty brand | Clean skincare",
+      "website": "sustainablebeautyco.com",
+      "engagement_rate": 3.5,
+      "recent_posts": 12,
+      "industry": "beauty",
+      "found_via": "#sustainablefashion",
+      "qualification_score": 95,
+      "qualification_reasons": [
+        "Strong following (15,000)",
+        "Has website",
+        "In beauty industry",
+        "Is founder",
+        "High engagement (3.5%)",
+        "Active poster"
+      ],
+      "qualified": true,
+      "email": "sarah@sustainablebeautyco.com"
+    }
+  ],
+  "outreach_log": [
+    {
+      "lead": "Sarah Chen",
+      "email": "sarah@sustainablebeautyco.com",
+      "platform": "instagram",
+      "sent_at": "2025-10-17T12:25:45.753296",
+      "success": false
+    }
+  ]
+}

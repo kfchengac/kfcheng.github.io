@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lead Generation - COLLIDE AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+    <style>
+        .lead-gen-container {
+            max-width: 1400px;
+            margin: 40px auto;
+            padding: 40px;
+        }
+        
+        .campaign-builder {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        
+        .search-config {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .config-section {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 12px;
+        }
+        
+        .config-section h3 {
+            margin-bottom: 16px;
+            color: var(--text-dark);
+        }
+        
+        .tag-input {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .tag {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .tag button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0;
+        }
+        
+        .leads-table {
+            width: 100%;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        
+        .leads-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .leads-table th {
+            background: #f7fafc;
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-dark);
+            border-bottom: 2px solid var(--border);
+        }
+        
+        .leads-table td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .score-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+        
+        .score-high { background: #c6f6d5; color: #22543d; }
+        .score-medium { background: #feebc8; color: #7c2d12; }
+        .score-low { background: #fed7d7; color: #742a2a; }
+        
+        .platform-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .platform-instagram { background: #fad0ec; color: #b83280; }
+        .platform-linkedin { background: #dbeafe; color: #1e40af; }
+        .platform-email { background: #d1fae5; color: #065f46; }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.875rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .btn-primary-small {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-secondary-small {
+            background: #e2e8f0;
+            color: var(--text-dark);
+        }
+        
+        .campaign-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .stat-label {
+            color: var(--text-light);
+            font-size: 0.875rem;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="lead-gen-container">
+        <header>
+            <h1>🎯 Lead Generation & Outreach</h1>
+            <p style="color: var(--text-light); margin-top: 8px;">
+                Find and qualify creative entrepreneurs across social platforms
+            </p>
+        </header>
+
+        <!-- Campaign Stats -->
+        <div class="campaign-stats">
+            <div class="stat-card">
+                <div class="stat-value" id="total-leads">0</div>
+                <div class="stat-label">Total Leads</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="qualified-leads">0</div>
+                <div class="stat-label">Qualified</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="outreach-sent">0</div>
+                <div class="stat-label">Outreach Sent</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="response-rate">0%</div>
+                <div class="stat-label">Response Rate</div>
+            </div>
+        </div>
+
+        <!-- Campaign Builder -->
+        <div class="campaign-builder">
+            <h2>New Campaign</h2>
+            
+            <div class="search-config">
+                <!-- Instagram Config -->
+                <div class="config-section">
+                    <h3>📸 Instagram Hashtags</h3>
+                    <div class="tag-input" id="instagram-tags">
+                        <span class="tag">#sustainablefashion <button onclick="removeTag(this)">×</button></span>
+                        <span class="tag">#cleanbeauty <button onclick="removeTag(this)">×</button></span>
+                        <span class="tag">#luxuryskincare <button onclick="removeTag(this)">×</button></span>
+                    </div>
+                    <input type="text" id="instagram-input" placeholder="Add hashtag..." 
+                           onkeypress="addTag(event, 'instagram')" class="form-control">
+                </div>
+
+                <!-- LinkedIn Config -->
+                <div class="config-section">
+                    <h3>💼 LinkedIn Keywords</h3>
+                    <div class="tag-input" id="linkedin-tags">
+                        <span class="tag">fashion brand founder <button onclick="removeTag(this)">×</button></span>
+                        <span class="tag">beauty brand CEO <button onclick="removeTag(this)">×</button></span>
+                    </div>
+                    <input type="text" id="linkedin-input" placeholder="Add keyword..." 
+                           onkeypress="addTag(event, 'linkedin')" class="form-control">
+                </div>
+            </div>
+
+            <!-- Campaign Controls -->
+            <div style="display: flex; gap: 16px; align-items: center;">
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <span>Max Leads:</span>
+                    <input type="number" id="max-leads" value="100" min="10" max="500" 
+                           style="width: 80px; padding: 8px; border: 2px solid var(--border); border-radius: 8px;">
+                </label>
+                
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="auto-outreach">
+                    <span>Auto-send outreach</span>
+                </label>
+                
+                <button onclick="runCampaign()" class="btn btn-primary" style="margin-left: auto;">
+                    🚀 Run Campaign
+                </button>
+                
+                <button onclick="exportLeads()" class="btn btn-secondary">
+                    📥 Export CSV
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Table -->
+        <div class="leads-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Platform</th>
+                        <th>Industry</th>
+                        <th>Score</th>
+                        <th>Email</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="leads-tbody">
+                    <!-- Sample data -->
+                    <tr>
+                        <td>
+                            <strong>Sarah Chen</strong><br>
+                            <small style="color: var(--text-light);">Sustainable Beauty Co</small>
+                        </td>
+                        <td><span class="platform-badge platform-instagram">Instagram</span></td>
+                        <td>Beauty</td>
+                        <td><span class="score-badge score-high">75</span></td>
+                        <td>sarah@sustainablebeautyco.com</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-small btn-primary-small" onclick="viewLead(0)">View</button>
+                                <button class="btn-small btn-secondary-small" onclick="sendOutreach(0)">Reach Out</button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <strong>Emily Rodriguez</strong><br>
+                            <small style="color: var(--text-light);">Lumière Lifestyle</small>
+                        </td>
+                        <td><span class="platform-badge platform-linkedin">LinkedIn</span></td>
+                        <td>Lifestyle</td>
+                        <td><span class="score-badge score-medium">68</span></td>
+                        <td>emily@lumierelifestyle.com</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-small btn-primary-small" onclick="viewLead(1)">View</button>
+                                <button class="btn-small btn-secondary-small" onclick="sendOutreach(1)">Reach Out</button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let campaignLeads = [];
+
+        function addTag(event, type) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const input = event.target;
+                const value = input.value.trim();
+                
+                if (value) {
+                    const container = document.getElementById(`${type}-tags`);
+                    const tag = document.createElement('span');
+                    tag.className = 'tag';
+                    tag.innerHTML = `${value} <button onclick="removeTag(this)">×</button>`;
+                    container.appendChild(tag);
+                    input.value = '';
+                }
+            }
+        }
+
+        function removeTag(button) {
+            button.parentElement.remove();
+        }
+
+        async function runCampaign() {
+            const instagramTags = Array.from(document.querySelectorAll('#instagram-tags .tag'))
+                .map(tag => tag.textContent.replace('×', '').trim());
+            const linkedinTags = Array.from(document.querySelectorAll('#linkedin-tags .tag'))
+                .map(tag => tag.textContent.replace('×', '').trim());
+            const maxLeads = document.getElementById('max-leads').value;
+            const autoOutreach = document.getElementById('auto-outreach').checked;
+
+            // Show loading
+            const btn = event.target;
+            btn.textContent = '⏳ Running...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/lead-gen/campaign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        instagram_hashtags: instagramTags,
+                        linkedin_keywords: linkedinTags,
+                        max_leads: parseInt(maxLeads),
+                        auto_outreach: autoOutreach
+                    })
+                });
+
+                const data = await response.json();
+                
+                // Update stats
+                document.getElementById('total-leads').textContent = data.total_found;
+                document.getElementById('qualified-leads').textContent = data.qualified;
+                document.getElementById('outreach-sent').textContent = data.outreach_sent;
+
+                // Update table
+                campaignLeads = data.top_leads;
+                renderLeadsTable(data.top_leads);
+
+                alert(`✅ Campaign complete! Found ${data.qualified} qualified leads.`);
+            } catch (error) {
+                alert('Error running campaign: ' + error.message);
+            } finally {
+                btn.textContent = '🚀 Run Campaign';
+                btn.disabled = false;
+            }
+        }
+
+        function renderLeadsTable(leads) {
+            const tbody = document.getElementById('leads-tbody');
+            tbody.innerHTML = leads.map((lead, idx) => `
+                <tr>
+                    <td>
+                        <strong>${lead.name}</strong><br>
+                        <small style="color: var(--text-light);">${lead.company || lead.username}</small>
+                    </td>
+                    <td><span class="platform-badge platform-${lead.platform}">${lead.platform}</span></td>
+                    <td>${lead.industry}</td>
+                    <td><span class="score-badge score-${getScoreClass(lead.qualification_score)}">${lead.qualification_score}</span></td>
+                    <td>${lead.email || 'N/A'}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-small btn-primary-small" onclick="viewLead(${idx})">View</button>
+                            <button class="btn-small btn-secondary-small" onclick="sendOutreach(${idx})">Reach Out</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function getScoreClass(score) {
+            if (score >= 70) return 'high';
+            if (score >= 50) return 'medium';
+            return 'low';
+        }
+
+        function viewLead(index) {
+            const lead = campaignLeads[index];
+            alert(`Lead Details:\n\nName: ${lead.name}\nCompany: ${lead.company || lead.username}\nScore: ${lead.qualification_score}\nReasons: ${lead.qualification_reasons.join(', ')}`);
+        }
+
+        async function sendOutreach(index) {
+            const lead = campaignLeads[index];
+            
+            if (!lead.email) {
+                alert('No email address found for this lead.');
+                return;
+            }
+
+            if (confirm(`Send outreach email to ${lead.name} (${lead.email})?`)) {
+                try {
+                    const response = await fetch('/api/lead-gen/outreach', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ lead_index: index })
+                    });
+
+                    if (response.ok) {
+                        alert('✅ Outreach sent successfully!');
+                        document.getElementById('outreach-sent').textContent = 
+                            parseInt(document.getElementById('outreach-sent').textContent) + 1;
+                    }
+                } catch (error) {
+                    alert('Error sending outreach: ' + error.message);
+                }
+            }
+        }
+
+        function exportLeads() {
+            if (campaignLeads.length === 0) {
+                alert('No leads to export. Run a campaign first.');
+                return;
+            }
+
+            const csv = convertToCSV(campaignLeads);
+            downloadCSV(csv, 'collide_leads.csv');
+        }
+
+        function convertToCSV(leads) {
+            const headers = ['Name', 'Company', 'Email', 'Platform', 'Industry', 'Score', 'Website'];
+            const rows = leads.map(lead => [
+                lead.name,
+                lead.company || lead.username,
+                lead.email || '',
+                lead.platform,
+                lead.industry,
+                lead.qualification_score,
+                lead.website || ''
+            ]);
+
+            return [headers, ...rows].map(row => row.join(',')).join('\n');
+        }
+
+        function downloadCSV(csv, filename) {
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
